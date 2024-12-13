@@ -1,6 +1,7 @@
 import telebot
 from db import Database
 from dotenv import load_dotenv
+from telebot import types
 
 load_dotenv()
 
@@ -12,20 +13,30 @@ bot = telebot.TeleBot(API_TOKEN)
 db = Database()
 db.create_tables()
 
+def get_main_menu():
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    btn_add_dish = types.KeyboardButton("Добавить нямку")
+    btn_remove_dish = types.KeyboardButton("Убрать нямку")
+    btn_show_menu = types.KeyboardButton("Мое меню")
+    btn_reset = types.KeyboardButton("Сбросит усьо")
+    btn_show_summary = types.KeyboardButton("Нанямканое")
+    markup.add(btn_add_dish, btn_remove_dish)
+    markup.add(btn_show_menu, btn_show_summary)
+    markup.add(btn_reset)
+    return markup
+
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
     db.add_user(message.chat.id)
-    bot.reply_to(message, "Привет! Давай считать сколько ты нямкаешь. Вот что я умею:\n"
-                          "/add_dish - добавить нямку\n"
-                          "/summary - посмотреть сколько снямкала\n"
-                          "/reset - сбросить все нямки за сегодня\n"
-                          "/menu - список всех нямок\n"
-                          "/remove_dish - удалить нямку\n\n"
-                          "После добавления нямки в меню напиши `+панан` и я запишу, что ты снямкала панан\n"
-                          "Если нямка весовая - вводи `+блинчик 200` и я запишу что ты снямкала 200г блинчиков")
+    welcome_text  = "Привет! Давай считать сколько ты нямкаешь. \n"
+    "Сначала добавь нямку в меню кнопкой `Добавить нямку`. Вдруг добавила что-то не то - используй `Убрать нямку`"
+    "Посмотреть список нямок - `Мое меню`. `Сбросить усьо` - сбросить всё что нямкала за день"
+    "После добавления нямки в меню напиши `+панан` и я запишу, что ты снямкала панан\n"
+    "Если нямка весовая - вводи `+блинчик 200` и я запишу что ты снямкала 200г блинчиков"
+    "`Нанямканое` - посмотреть сколько и чего нанямкала за день"
+    bot.send_message(message.chat.id, welcome_text, reply_markup=get_main_menu())
 
-
-@bot.message_handler(commands=['add_dish'])
+@bot.message_handler(func=lambda message: message.text == "Добавить нямку")
 def add_dish(message):
     bot.send_message(message.chat.id, "Запиши новую нямку в формате:\n"
                                       "`Название, калории, белки, жиры, углеводы`\n"
@@ -43,7 +54,7 @@ def save_dish(message):
         bot.reply_to(message, "Ошибка: убедиcm, что всё ввела правильно\nНапример: Панан, 100, 1.1, 5.5, 10.1")
         print(e)
 
-@bot.message_handler(commands=['remove_dish'])
+@bot.message_handler(func=lambda message: message.text == "Убрать нямку")
 def remove_dish_init(message):
     bot.send_message(message.chat.id, "Напиши название нямки для удаления", parse_mode='Markdown')
     bot.register_next_step_handler(message, remove_dish)
@@ -57,7 +68,7 @@ def remove_dish(message):
         bot.reply_to(message, "Ошибка: убедись что правильно записала нямку")
         print(e)
 
-@bot.message_handler(commands=['summary'])
+@bot.message_handler(func=lambda message: message.text == "Нанямканое")
 def daily_summary(message):
     summary = db.get_daily_summary(message.chat.id)
     if summary and summary['total_calories'] is not None:
@@ -69,7 +80,7 @@ def daily_summary(message):
     else:
         bot.reply_to(message, "Ты сегодня еще не нямкала")
 
-@bot.message_handler(commands=['reset'])
+@bot.message_handler(func=lambda message: message.text == "Сбросит усьо")
 def reset_data(message):
     db.reset_daily_data(message.chat.id)
     bot.reply_to(message, "Сбросил список нямок")
@@ -88,11 +99,11 @@ def add_consumed(message):
             bot.reply_to(message, f"Записал что ты снямкала '{dish_name}' сегодня")
         else:
             bot.reply_to(message, f"Не нашел '{dish_name}' в твоем меню\n"
-            f"Добавь нямку через /add_dish.")
+            f"Добавь нямку через кнопочку")
     except ValueError:
         bot.reply_to(message, "Ошибка: я тут циферки прикинул, не пойму сколько нямки ты слопала...")
 
-@bot.message_handler(commands=['menu'])
+@bot.message_handler(func=lambda message: message.text == "Мое меню")
 def get_menu(message):
     menu_list = db.get_menu(message.chat.id)
     if menu_list and menu_list['menu_values'] is not None:
