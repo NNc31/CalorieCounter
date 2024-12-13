@@ -37,7 +37,8 @@ class Database:
                     id SERIAL PRIMARY KEY,
                     user_id INT REFERENCES users(id),
                     dish_id INT REFERENCES dishes(id),
-                    date DATE DEFAULT CURRENT_DATE
+                    date DATE DEFAULT CURRENT_DATE,
+                    grams REAL
 );
             """)
 
@@ -63,10 +64,10 @@ class Database:
         with self.connection.cursor(cursor_factory=RealDictCursor) as cursor:
             cursor.execute("""
                 SELECT 
-                    SUM(calories) AS total_calories,
-                    SUM(protein) AS total_protein,
-                    SUM(fat) AS total_fat,
-                    SUM(carbs) AS total_carbs
+                    SUM(calories * grams / 100) AS total_calories,
+                    SUM(protein * grams / 100) AS total_protein,
+                    SUM(fat * grams / 100) AS total_fat,
+                    SUM(carbs * grams / 100) AS total_carbs
                 FROM dishes d
                 INNER JOIN daily_intake di ON d.id = di.dish_id AND d.user_id = di.user_id
                 WHERE d.user_id = (SELECT id FROM users WHERE telegram_id = %s)
@@ -92,17 +93,17 @@ class Database:
             """, (telegram_id, name))
             return cursor.fetchone()
 
-    def add_consumed_dish(self, telegram_id, name):
+    def add_consumed_dish(self, telegram_id, name, grams):
         dish = self.get_dish_by_name(telegram_id, name)
         if dish:
             with self.connection.cursor() as cursor:
                 cursor.execute("""
-                    INSERT INTO daily_intake (user_id, dish_id, date)
+                    INSERT INTO daily_intake (user_id, dish_id, date, grams)
                     VALUES (
                         (SELECT id FROM users WHERE telegram_id = %s),
-                        %s, CURRENT_DATE
+                        %s, CURRENT_DATE, %s
                     );
-                """, (telegram_id, dish['id']))
+                """, (telegram_id, dish['id'], grams))
             return True
         return False
         
