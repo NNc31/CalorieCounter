@@ -67,7 +67,8 @@ class Database:
                     SUM(calories * grams / 100) AS total_calories,
                     SUM(protein * grams / 100) AS total_protein,
                     SUM(fat * grams / 100) AS total_fat,
-                    SUM(carbs * grams / 100) AS total_carbs
+                    SUM(carbs * grams / 100) AS total_carbs,
+                    STRING_AGG(name, ', ') AS consumed_dishes
                 FROM dishes d
                 INNER JOIN daily_intake di ON d.id = di.dish_id AND d.user_id = di.user_id
                 WHERE d.user_id = (SELECT id FROM users WHERE telegram_id = %s)
@@ -132,4 +133,20 @@ class Database:
                 FROM dishes
                 WHERE user_id = (SELECT id FROM users WHERE telegram_id = %s)
             """, (telegram_id,))
+            return cursor.fetchone()
+
+    def get_history_summary(self, telegram_id, historyDate):
+        with self.connection.cursor(cursor_factory=RealDictCursor) as cursor:
+            cursor.execute("""
+                SELECT 
+                    SUM(calories * grams / 100) AS total_calories,
+                    SUM(protein * grams / 100) AS total_protein,
+                    SUM(fat * grams / 100) AS total_fat,
+                    SUM(carbs * grams / 100) AS total_carbs,
+                    STRING_AGG(name, ', ') AS consumed_dishes
+                FROM dishes d
+                INNER JOIN daily_intake di ON d.id = di.dish_id AND d.user_id = di.user_id
+                WHERE d.user_id = (SELECT id FROM users WHERE telegram_id = %s)
+                  AND di.date = %s;
+            """, (telegram_id, historyDate))
             return cursor.fetchone()

@@ -2,6 +2,7 @@ import telebot
 from db import Database
 from dotenv import load_dotenv
 from telebot import types
+from datetime import date, datetime
 
 load_dotenv()
 
@@ -20,15 +21,16 @@ def get_main_menu():
     btn_show_menu = types.KeyboardButton("Мое меню")
     btn_reset = types.KeyboardButton("Сбросит усьо")
     btn_show_summary = types.KeyboardButton("Нанямканое")
+    btn_show_history = types.KeyboardButton("История нямканья")
     markup.add(btn_add_dish, btn_remove_dish)
-    markup.add(btn_show_menu, btn_show_summary)
-    markup.add(btn_reset)
+    markup.add(btn_show_summary, btn_show_history)
+    markup.add(btn_show_menu, btn_reset)
     return markup
 
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
     db.add_user(message.chat.id)
-    welcome_text  = "Привет! Давай считать сколько ты нямкаешь. \n Сначала добавь нямку в меню кнопкой 'Добавить нямку'. Вдруг добавила что-то не то - используй 'Убрать нямку'\nПосмотреть список нямок - 'Мое меню'. 'Сбросить усьо' - сбросить всё что нямкала за день\nПосле добавления нямки в меню напиши '+панан' и я запишу, что ты снямкала панан\nЕсли нямка весовая - вводи '+блинчик 200' и я запишу что ты снямкала 200г блинчиков\n'Нанямканое' - посмотреть сколько и чего нанямкала за день"
+    welcome_text  = "Привет! Давай считать сколько ты нямкаешь. \n Сначала добавь нямку в меню кнопкой 'Добавить нямку'. Вдруг добавила что-то не то - используй 'Убрать нямку'\nПосмотреть список нямок - 'Мое меню'. 'Сбросить усьо' - сбросить всё что нямкала за день\nПосле добавления нямки в меню напиши '+панан' и я запишу, что ты снямкала панан\nЕсли нямка весовая - вводи '+блинчик 200' и я запишу что ты снямкала 200г блинчиков\n'Нанямканое' - посмотреть сколько и чего нанямкала за день\n'История нямканья' - посмотреть список нямканья за один из прошлых дней"
     bot.send_message(message.chat.id, welcome_text, reply_markup=get_main_menu())
 
 @bot.message_handler(func=lambda message: message.text == "Добавить нямку")
@@ -71,7 +73,8 @@ def daily_summary(message):
                               f"Калорий: {summary['total_calories']}\n"
                               f"Белков: {summary['total_protein']}\n"
                               f"Жиров: {summary['total_fat']}\n"
-                              f"Углеводов: {summary['total_carbs']}")
+                              f"Углеводов: {summary['total_carbs']}\n"
+                              f"Нямки: {summary['consumed_dishes']}")
     else:
         bot.reply_to(message, "Ты сегодня еще не нямкала")
 
@@ -106,5 +109,30 @@ def get_menu(message):
     else:
         bot.reply_to(message, "Список нямок пуст!")
 
-# Запуск бота
+@bot.message_handler(func=lambda message: message.text in ["Кусь", "кусь"])
+def remove_dish_init(message):
+    bot.reply_to(message,  "Эээ, это тя кусь!")
+    
+@bot.message_handler(func=lambda message: message.text == "История нямканья")
+def select_history_date(message):
+    bot.send_message(message.chat.id, "Напиши день, за который ты хочешь узнать нямки в формате `дд.мм.гггг`",
+                     parse_mode='Markdown')
+    bot.register_next_step_handler(message, history_summary)
+
+def history_summary(message):
+    try:
+        date = datetime.strptime(message.text, "%d.%m.%Y").date()
+        summary = db.get_history_summary(message.chat.id, date)
+        if summary and summary['total_calories'] is not None:
+            bot.reply_to(message, f"За {message.text} ты снямкала:\n"
+                              f"Калорий: {summary['total_calories']}\n"
+                              f"Белков: {summary['total_protein']}\n"
+                              f"Жиров: {summary['total_fat']}\n"
+                              f"Углеводов: {summary['total_carbs']}\n"
+                              f"Нямки: {summary['consumed_dishes']}")
+        else:
+            bot.reply_to(message, f"Нет инфы за {message.text} (((")
+    except ValueError as e:
+        bot.reply_to(message, "Ошибка: шось дата неправильная... Правильно введи дату, например `01.01.1001`")
+
 bot.polling()
