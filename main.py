@@ -48,7 +48,8 @@ def save_dish(message):
         db.add_dish(message.chat.id, name, int(calories), float(protein), float(fat), float(carbs))
         bot.reply_to(message, f"Нямку '{name}' добавил!")
     except Exception as e:
-        bot.reply_to(message, "Ошибка: убедиcm, что всё ввела правильно\nНапример: Панан, 100, 1.1, 5.5, 10.1")
+        bot.send_sticker(message.chat.id, "CAACAgIAAxkBAAENVDdnXrD9kxPdxxnq_L2Py1iZxZOrngACkWMAAr3OWUqVmkfU6UBnezYE")
+        bot.reply_to(message, "Ошибка: убедись, что всё ввела правильно\nНапример: Панан, 100, 1.1, 5.5, 10.1")
         print(e)
 
 @bot.message_handler(func=lambda message: message.text == "Убрать нямку")
@@ -62,6 +63,7 @@ def remove_dish(message):
         db.remove_dish(message.chat.id, name)
         bot.reply_to(message, f"Удалил нямку '{name}'!")
     except Exception as e:
+        bot.send_sticker(message.chat.id, "CAACAgIAAxkBAAENVDdnXrD9kxPdxxnq_L2Py1iZxZOrngACkWMAAr3OWUqVmkfU6UBnezYE")
         bot.reply_to(message, "Ошибка: убедись что правильно записала нямку")
         print(e)
 
@@ -99,19 +101,23 @@ def add_consumed(message):
             bot.reply_to(message, f"Не нашел '{dish_name}' в твоем меню\n"
             f"Добавь нямку через кнопочку")
     except ValueError:
+        bot.send_sticker(message.chat.id, "CAACAgIAAxkBAAENVDdnXrD9kxPdxxnq_L2Py1iZxZOrngACkWMAAr3OWUqVmkfU6UBnezYE")
         bot.reply_to(message, "Ошибка: я тут циферки прикинул, не пойму сколько нямки ты слопала...")
 
 @bot.message_handler(func=lambda message: message.text == "Мое меню")
 def get_menu(message):
     menu_list = db.get_menu(message.chat.id)
     if menu_list and menu_list['menu_values'] is not None:
+        bot.send_sticker(message.chat.id, "CAACAgIAAxkBAAENVDVnXrDgrBvabxkVE3Gk7iObN9kPFwAC5FsAAnJ1eUpg2xpQRRYGsjYE")
         bot.reply_to(message, menu_list['menu_values'])
     else:
+        bot.send_sticker(message.chat.id, "CAACAgIAAxkBAAENVDdnXrD9kxPdxxnq_L2Py1iZxZOrngACkWMAAr3OWUqVmkfU6UBnezYE")
         bot.reply_to(message, "Список нямок пуст!")
 
 @bot.message_handler(func=lambda message: message.text in ["Кусь", "кусь"])
 def remove_dish_init(message):
     bot.reply_to(message,  "Эээ, это тя кусь!")
+    bot.send_sticker(message.chat.id, "CAACAgIAAxkBAAENVDNnXrDVPowE35DdskQWJmvDrrS5hwACh1gAAlx2YUpfskIKeOiQ4zYE")
     
 @bot.message_handler(func=lambda message: message.text == "История нямканья")
 def select_history_date(message):
@@ -133,6 +139,7 @@ def history_summary(message):
         else:
             bot.reply_to(message, f"Нет инфы за {message.text} (((")
     except ValueError as e:
+        bot.send_sticker(message.chat.id, "CAACAgIAAxkBAAENVDdnXrD9kxPdxxnq_L2Py1iZxZOrngACkWMAAr3OWUqVmkfU6UBnezYE")
         bot.reply_to(message, "Ошибка: шось дата неправильная... Правильно введи дату, например `01.01.1001`")
 
 bot.polling()
