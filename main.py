@@ -45,7 +45,7 @@ def save_dish(message):
     try:
         data = message.text.split(',')
         name, calories, protein, fat, carbs = map(str.strip, data)
-        db.add_dish(message.chat.id, name, int(calories), float(protein), float(fat), float(carbs))
+        db.add_dish(message.chat.id, name.lower(), int(calories), float(protein), float(fat), float(carbs))
         bot.reply_to(message, f"Нямку '{name}' добавил!")
     except Exception as e:
         bot.send_sticker(message.chat.id, "CAACAgIAAxkBAAENVDdnXrD9kxPdxxnq_L2Py1iZxZOrngACkWMAAr3OWUqVmkfU6UBnezYE")
@@ -60,7 +60,7 @@ def remove_dish_init(message):
 def remove_dish(message):
     try:
         name = message.text
-        db.remove_dish(message.chat.id, name)
+        db.remove_dish(message.chat.id, name.lower())
         bot.reply_to(message, f"Удалил нямку '{name}'!")
     except Exception as e:
         bot.send_sticker(message.chat.id, "CAACAgIAAxkBAAENVDdnXrD9kxPdxxnq_L2Py1iZxZOrngACkWMAAr3OWUqVmkfU6UBnezYE")
@@ -95,7 +95,7 @@ def add_consumed(message):
         else:
             dish_name = input_text
             grams = 100
-        if db.add_consumed_dish(message.chat.id, dish_name, grams):
+        if db.add_consumed_dish(message.chat.id, dish_name.lower(), grams):
             bot.reply_to(message, f"Записал что ты снямкала '{dish_name}' сегодня")
         else:
             bot.reply_to(message, f"Не нашел '{dish_name}' в твоем меню\n"
