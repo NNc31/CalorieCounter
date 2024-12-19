@@ -1,7 +1,7 @@
 import psycopg2
 from psycopg2 import sql
 from psycopg2.extras import RealDictCursor
-from datetime import date
+from datetime import date, datetime
 import os
 
 class Database:
@@ -26,11 +26,12 @@ class Database:
                 CREATE TABLE IF NOT EXISTS dishes (
                     id SERIAL PRIMARY KEY,
                     user_id INT REFERENCES users(id),
-                    name VARCHAR(255) NOT NULL,
+                    name VARCHAR(255) UNIQUE NOT NULL,
                     calories INT NOT NULL,
                     protein REAL,
                     fat REAL,
-                    carbs REAL
+                    carbs REAL,
+                    is_active BOOLEAN DEFAULT TRUE
                 );
                 
                 CREATE TABLE IF NOT EXISTS daily_intake (
@@ -49,14 +50,29 @@ class Database:
                 VALUES (%s)
                 ON CONFLICT (telegram_id) DO NOTHING;
             """, (telegram_id,))
-
+                
     def add_dish(self, telegram_id, name, calories, protein, fat, carbs):
         with self.connection.cursor() as cursor:
             cursor.execute("""
-                INSERT INTO dishes (user_id, name, calories, protein, fat, carbs)
+                SELECT id, name
+                FROM dishes
+                WHERE user_id = (SELECT id FROM users WHERE telegram_id = %s)
+                AND name = %s;
+            """, (telegram_id, name))
+            existing_dish = cursor.fetchone()
+            if existing_dish:
+                timestamp = datetime.now().strftime("%d.%m.%y %H:%M")
+                new_name = f"{existing_dish[1]} ({timestamp})"
+                cursor.execute("""
+                    UPDATE dishes
+                    SET name = %s, is_active = FALSE
+                    WHERE id = %s;
+                """, (new_name, existing_dish[0]))
+            cursor.execute("""
+                INSERT INTO dishes (user_id, name, calories, protein, fat, carbs, is_active)
                 VALUES (
                     (SELECT id FROM users WHERE telegram_id = %s),
-                    %s, %s, %s, %s, %s
+                    %s, %s, %s, %s, %s, TRUE
                 );
             """, (telegram_id, name, calories, protein, fat, carbs))
 
@@ -113,13 +129,8 @@ class Database:
         if dish:
             with self.connection.cursor() as cursor:
                 cursor.execute("""
-                    DELETE FROM daily_intake
-                    WHERE user_id = (SELECT id FROM users WHERE telegram_id = %s)
-                    AND date = %s
-                    AND dish_id = %s;
-                """, (telegram_id, date.today(), dish['id']))
-                cursor.execute("""
-                    DELETE FROM dishes
+                    UPDATE dishes
+                    SET is_active = FALSE
                     WHERE user_id = (SELECT id FROM users WHERE telegram_id = %s)
                     AND name = %s;
                 """, (telegram_id, name))
@@ -131,7 +142,7 @@ class Database:
             cursor.execute("""
                 SELECT STRING_AGG(name, ', ') AS menu_values
                 FROM dishes
-                WHERE user_id = (SELECT id FROM users WHERE telegram_id = %s)
+                WHERE user_id = (SELECT id FROM users WHERE telegram_id = %s) AND is_active = TRUE
             """, (telegram_id,))
             return cursor.fetchone()
 
